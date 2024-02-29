@@ -3,11 +3,8 @@ package com.example.downimagedemo;
 import android.app.ProgressDialog;
 import android.os.Bundle;
 import android.os.Environment;
-import android.os.FileUtils;
-import android.os.Handler;
 import android.util.Log;
 import android.view.View;
-import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -21,33 +18,18 @@ import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.DataSource;
 import com.bumptech.glide.load.engine.GlideException;
 import com.bumptech.glide.request.RequestListener;
-import com.bumptech.glide.request.target.SimpleTarget;
 import com.bumptech.glide.request.target.Target;
-import com.flyjingfish.openimagelib.OpenImage;
-import com.flyjingfish.openimagelib.beans.OpenImageUrl;
-import com.flyjingfish.openimagelib.enums.MediaType;
-import com.flyjingfish.openimagelib.listener.SourceImageViewIdGet;
-import com.hitomi.tilibrary.transfer.TransferConfig;
-import com.hitomi.tilibrary.transfer.Transferee;
 import com.hjq.permissions.Permission;
 import com.hjq.permissions.XXPermissions;
-import com.vansz.glideimageloader.GlideImageLoader;
 
 import java.io.File;
-import java.nio.file.Files;
-import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
 import java.util.UUID;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class DownImageActivity extends AppCompatActivity {
     DownImageAdapter mAdapter;
@@ -66,20 +48,38 @@ public class DownImageActivity extends AppCompatActivity {
         RecyclerView rv = findViewById(R.id.rv_images);
         TextView selectHint = findViewById(R.id.tvSelectHint);
         TextView tvSave = findViewById(R.id.tvSave);
+
         mAdapter = new DownImageAdapter(images, new DownImageAdapter.UpdateListener() {
             @Override
             public void clickImg(int position) {
-                Transferee transfer = Transferee.getDefault(rv.getContext());
-                transfer.apply(TransferConfig.build()
-                        .setImageLoader(GlideImageLoader.with(rv.getContext()))
-                        .create()
-                ).show();
+//                Transferee transfer = Transferee.getDefault(rv.getContext());
+//                transfer.apply(TransferConfig.build()
+//                        .setImageLoader(GlideImageLoader.with(rv.getContext()))
+//                        .create()
+//                ).show();
             }
 
             @Override
             public void update(int selectSize) {
                 selectHint.setText("点击清除⬅️    已选择" + selectSize + "/" + images.size());
 
+            }
+        });
+        DragSelectTouchListener touchListener = new DragSelectTouchListener();
+        rv.addOnItemTouchListener(touchListener);
+        touchListener.setStartSelectPosition(0);
+
+
+        mAdapter.setLongClickListener(v -> {
+            int position = rv.getChildAdapterPosition(v);
+            mAdapter.setSelected(position);
+            touchListener.setStartSelectPosition(position);
+            return false;
+        });
+        touchListener.setSelectListener(new DragSelectTouchListener.onSelectListener() {
+            @Override
+            public void onSelectChange(int start, int end, boolean isSelected) {
+                mAdapter.selectRangeChange(start,end,isSelected);
             }
         });
         selectHint.setOnClickListener(view -> {
