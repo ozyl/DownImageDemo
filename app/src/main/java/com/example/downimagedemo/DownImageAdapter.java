@@ -16,7 +16,6 @@ import com.bumptech.glide.Glide;
 import com.bumptech.glide.Priority;
 import com.bumptech.glide.load.engine.DiskCacheStrategy;
 import com.bumptech.glide.request.RequestOptions;
-import com.flyjingfish.openimagelib.OpenImage;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -24,7 +23,6 @@ import java.util.function.Function;
 
 public class DownImageAdapter extends RecyclerView.Adapter<ViewHolder> {
 
-    RequestOptions requestOptions = new RequestOptions();
 
     interface UpdateListener {
         void clickImg(int position);
@@ -95,7 +93,7 @@ public class DownImageAdapter extends RecyclerView.Adapter<ViewHolder> {
             selectedTv.setVisibility(View.INVISIBLE);
             selectIv.setVisibility(View.VISIBLE);
         }
-        Glide.with(iv.getContext()).load(images.get(position)).into(iv);
+        Glide.with(iv).load(images.get(position)).into(iv);
     }
 
     @Override

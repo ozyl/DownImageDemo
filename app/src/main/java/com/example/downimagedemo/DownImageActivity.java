@@ -3,11 +3,9 @@ package com.example.downimagedemo;
 import android.app.ProgressDialog;
 import android.os.Bundle;
 import android.os.Environment;
-import android.os.FileUtils;
-import android.os.Handler;
-import android.util.Log;
 import android.view.View;
 import android.widget.ImageView;
+import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -18,30 +16,18 @@ import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
+import com.bumptech.glide.integration.recyclerview.RecyclerViewPreloader;
 import com.bumptech.glide.load.DataSource;
 import com.bumptech.glide.load.engine.GlideException;
 import com.bumptech.glide.request.RequestListener;
-import com.bumptech.glide.request.target.SimpleTarget;
 import com.bumptech.glide.request.target.Target;
-import com.flyjingfish.openimagelib.OpenImage;
-import com.flyjingfish.openimagelib.beans.OpenImageUrl;
-import com.flyjingfish.openimagelib.enums.MediaType;
-import com.flyjingfish.openimagelib.listener.SourceImageViewIdGet;
-import com.hitomi.tilibrary.transfer.TransferConfig;
-import com.hitomi.tilibrary.transfer.Transferee;
+import com.bumptech.glide.util.FixedPreloadSizeProvider;
 import com.hjq.permissions.Permission;
 import com.hjq.permissions.XXPermissions;
-import com.vansz.glideimageloader.GlideImageLoader;
 
 import java.io.File;
-import java.nio.file.Files;
-import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
 import java.util.UUID;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.Semaphore;
@@ -66,14 +52,24 @@ public class DownImageActivity extends AppCompatActivity {
         RecyclerView rv = findViewById(R.id.rv_images);
         TextView selectHint = findViewById(R.id.tvSelectHint);
         TextView tvSave = findViewById(R.id.tvSave);
+        ImageView preview = findViewById(R.id.ivBigPreview);
+        ScrollView svPreview = findViewById(R.id.svPreview);
+        svPreview.setOnClickListener(view -> {
+            svPreview.setVisibility(View.INVISIBLE);
+        });
+        preview.setOnClickListener(view -> {
+            svPreview.setVisibility(View.INVISIBLE);
+        });
+        FixedPreloadSizeProvider<String> sizeProvider = new FixedPreloadSizeProvider<>(650, 650);
+
+        RecyclerViewPreloader<String> preloader = new RecyclerViewPreloader<>(Glide.with(this), new MyPreloadModelProvider(this, images),
+                sizeProvider, 10);
+        rv.addOnScrollListener(preloader);
         mAdapter = new DownImageAdapter(images, new DownImageAdapter.UpdateListener() {
             @Override
             public void clickImg(int position) {
-                Transferee transfer = Transferee.getDefault(rv.getContext());
-                transfer.apply(TransferConfig.build()
-                        .setImageLoader(GlideImageLoader.with(rv.getContext()))
-                        .create()
-                ).show();
+                svPreview.setVisibility(View.VISIBLE);
+                Glide.with(preview).load(images.get(position)).into(preview);
             }
 
             @Override
@@ -118,33 +114,22 @@ public class DownImageActivity extends AppCompatActivity {
         progressDialog.setMessage("准备下载...");
         progressDialog.setCancelable(false);
         progressDialog.show();
-        final int[] downloadCount = {0};
+        AtomicInteger count = new AtomicInteger(0);
         for (int i = 0; i < downImages.size(); i++) {
             String downImage = downImages.get(i);
             Glide.with(this).download(downImage).listener(new RequestListener<File>() {
                 @Override
                 public boolean onLoadFailed(@Nullable GlideException e, @Nullable Object model, @NonNull Target<File> target, boolean isFirstResource) {
-                    downloadCount[0] +=1;
-                    progressDialog.setMessage("下载中："+downloadCount[0] + "/" + downImages.size());
-                    if(downloadCount[0] == downImages.size()-1){
-                        progressDialog.dismiss();
-                        downloading = false;
-                        Toast.makeText(DownImageActivity.this, "下载完成", Toast.LENGTH_SHORT).show();
-                    }
+                    count.incrementAndGet();
+                    extracted(progressDialog, count, downImages);
 
                     return false;
                 }
 
                 @Override
                 public boolean onResourceReady(@NonNull File resource, @NonNull Object model, Target<File> target, @NonNull DataSource dataSource, boolean isFirstResource) {
-                    downloadCount[0] +=1;
-                    progressDialog.setMessage("下载中："+downloadCount[0] + "/" + downImages.size());
-                    if(downloadCount[0] == downImages.size()-1){
-                        progressDialog.dismiss();
-                        downloading = false;
-                        Toast.makeText(DownImageActivity.this, "下载完成", Toast.LENGTH_SHORT).show();
-                    }
-
+                    count.incrementAndGet();
+                    extracted(progressDialog, count, downImages);
                     File dir = new File(Environment.getExternalStorageDirectory().getAbsolutePath() + "/ADownload");
                     dir.mkdirs();
                     FileUtil.copyFile(resource.getAbsolutePath(), dir.getAbsolutePath() + "/" + UUID.randomUUID() + ".png");
@@ -152,6 +137,25 @@ public class DownImageActivity extends AppCompatActivity {
                 }
             }).preload();
 
+        }
+    }
+
+    private void extracted(ProgressDialog progressDialog, AtomicInteger count, ArrayList<String> downImages) {
+        progressDialog.setMessage("下载中：" + count.get() + "/" + downImages.size());
+        if (count.get() == downImages.size()) {
+            getWindow().getDecorView().postDelayed(progressDialog::dismiss,800);
+            downloading = false;
+            Toast.makeText(DownImageActivity.this, "下载完成", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    @Override
+    public void onBackPressed() {
+        ScrollView svPreview = findViewById(R.id.svPreview);
+        if (svPreview.getVisibility() == View.VISIBLE) {
+            svPreview.setVisibility(View.INVISIBLE);
+        } else {
+            super.onBackPressed();
         }
     }
 }
