@@ -78,6 +78,23 @@ public class DownImageActivity extends AppCompatActivity {
 
             }
         });
+        DragSelectTouchListener touchListener = new DragSelectTouchListener();
+        rv.addOnItemTouchListener(touchListener);
+        touchListener.setStartSelectPosition(0);
+
+
+        mAdapter.setLongClickListener(v -> {
+            int position = rv.getChildAdapterPosition(v);
+            mAdapter.setSelected(position);
+            touchListener.setStartSelectPosition(position);
+            return false;
+        });
+        touchListener.setSelectListener(new DragSelectTouchListener.onSelectListener() {
+            @Override
+            public void onSelectChange(int start, int end, boolean isSelected) {
+                mAdapter.selectRangeChange(start,end,isSelected);
+            }
+        });
         selectHint.setOnClickListener(view -> {
             mAdapter.clearSelected();
         });

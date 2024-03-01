@@ -1,8 +1,7 @@
 package com.example.downimagedemo;
 
-import static androidx.recyclerview.widget.RecyclerView.*;
+import static androidx.recyclerview.widget.RecyclerView.ViewHolder;
 
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -13,16 +12,15 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
-import com.bumptech.glide.Priority;
-import com.bumptech.glide.load.engine.DiskCacheStrategy;
 import com.bumptech.glide.request.RequestOptions;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Function;
 
 public class DownImageAdapter extends RecyclerView.Adapter<ViewHolder> {
 
+    RequestOptions requestOptions = new RequestOptions();
+    View.OnLongClickListener onLongClickListener;
 
     interface UpdateListener {
         void clickImg(int position);
@@ -32,6 +30,9 @@ public class DownImageAdapter extends RecyclerView.Adapter<ViewHolder> {
     List<Integer> selectIndex = new ArrayList<>();
     List<String> images;
 
+    void setLongClickListener(View.OnLongClickListener onLongClickListener){
+        this.onLongClickListener = onLongClickListener;
+    }
     UpdateListener call;
 
     public ArrayList<String> getSelectImages() {
@@ -74,6 +75,7 @@ public class DownImageAdapter extends RecyclerView.Adapter<ViewHolder> {
         iv.setOnClickListener(view -> {
             call.clickImg(position);
         });
+        iv.setOnLongClickListener(view-> onLongClickListener.onLongClick(holder.itemView));
         selectIv.setOnClickListener(view -> {
             selectIndex.add(position);
             call.update(selectIndex.size());
@@ -102,6 +104,30 @@ public class DownImageAdapter extends RecyclerView.Adapter<ViewHolder> {
     }
 
 
+    public void selectRangeChange(int start, int end, boolean isSelected) {
+        if (start < 0 || end >= images.size()) {
+            return;
+        }
+        for (int i = start; i <= end; i++) {
+            boolean isSelect = selectIndex.contains(i);
+            if (isSelect){
+                selectIndex.remove(Integer.valueOf(i));
+            }else {
+                selectIndex.add(i);
+            }
+        }
+        call.update(selectIndex.size());
+        notifyDataSetChanged();
+    }
+    void setSelected(int position){
+        boolean isSelect = selectIndex.contains(position);
+        if (isSelect){
+            selectIndex.remove(Integer.valueOf(position));
+        }else{
+            selectIndex.add(position);
+        }
+        notifyDataSetChanged();
+    }
 }
 
 
